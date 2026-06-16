@@ -1,0 +1,1 @@
+# GlicemIA — Módulo de API

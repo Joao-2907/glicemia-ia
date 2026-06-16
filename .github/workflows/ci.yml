@@ -1,0 +1,39 @@
+name: GlicemIA — CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  testes:
+    name: Testes Unitários
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Instalar dependências (sem TensorFlow para CI rápido)
+        run: |
+          pip install --upgrade pip
+          pip install pandas numpy scikit-learn openpyxl xlrd \
+                      fastapi uvicorn pydantic httpx pytest pytest-cov
+
+      - name: Executar testes unitários
+        run: |
+          python -m pytest tests/ -v \
+            --tb=short \
+            --cov=src \
+            --cov-report=term-missing
+
+      - name: Verificar importação dos módulos principais
+        run: |
+          python -c "from src.preprocessing.preprocessamento import preparar_dados, gerar_dados_demo; print('✅ preprocessamento OK')"
+          python -c "from src.api.main import app, _classificar_risco; print('✅ api OK')"

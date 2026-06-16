@@ -1,0 +1,46 @@
+# ── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# ── Ambientes virtuais ────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── IDEs ─────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# ── Jupyter Notebooks ────────────────────────────────────
+.ipynb_checkpoints/
+
+# ── Dataset (não versionar por tamanho) ──────────────────
+data/dataset/
+data/processed/
+
+# ── Modelos treinados (podem ser pesados) ────────────────
+models/*.keras
+models/*.h5
+models/*.pkl
+
+# ── Outputs gerados ──────────────────────────────────────
+outputs/
+
+# ── Cobertura de testes ───────────────────────────────────
+.coverage
+htmlcov/
+.pytest_cache/
+
+# ── Variáveis de ambiente ────────────────────────────────
+.env
+.env.local
