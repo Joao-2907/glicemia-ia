@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GlicemIA — Predição Glicêmica com IA</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#050F1A;font-family:'Inter',system-ui,sans-serif;color:#E8F4FD;min-height:100vh}
+    button{cursor:pointer;border:none;font-family:inherit}
+
+    /* Header */
+    #header{background:#0A1929;border-bottom:1px solid #1A3A5C;padding:12px 20px;display:flex;align-items:center;gap:12px}
+    #logo{width:36px;height:36px;background:radial-gradient(circle at 40% 40%,#00D4FF33,#007A9A22);border:1.5px solid #00D4FF66;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#00D4FF}
+    #logo-text{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:16px;color:#00D4FF;letter-spacing:.05em}
+    #logo-sub{font-size:11px;color:#6B8FAE;margin-top:1px}
+    #status{margin-left:auto;display:flex;align-items:center;gap:6px}
+    #dot{width:7px;height:7px;border-radius:50%;background:#2ED573;box-shadow:0 0 8px #2ED573}
+    #status-text{font-size:11px;color:#6B8FAE;font-family:'JetBrains Mono',monospace}
+
+    /* Layout */
+    #main{display:grid;grid-template-columns:1fr 340px;min-height:calc(100vh - 62px)}
+    #left{padding:18px 18px 18px 20px;border-right:1px solid #1A3A5C}
+    #right{padding:18px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+
+    /* Cenários */
+    .label-sec{font-size:10px;color:#6B8FAE;font-family:'JetBrains Mono',monospace;letter-spacing:.12em;margin-bottom:8px}
+    #cenarios{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .btn-cen{padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;transition:all .2s;border:1.5px solid #1A3A5C;background:#0D2137;color:#6B8FAE}
+    .btn-cen:hover{filter:brightness(1.2);transform:translateY(-1px)}
+    .btn-cen.ativo{filter:brightness(1)}
+
+    /* Canvas gráfico */
+    #wrap-chart{background:#0D2137;border:1px solid #1A3A5C;border-radius:12px;padding:12px 8px 8px;margin-bottom:14px}
+    #chart-header{display:flex;justify-content:space-between;align-items:center;padding:0 8px 8px;font-size:11px;color:#6B8FAE;font-family:'JetBrains Mono',monospace}
+    #cgm-canvas{width:100%;display:block}
+
+    /* Legenda */
+    #legenda{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .leg-card{background:#0D2137;border-radius:8px;padding:8px 10px;border-left:3px solid}
+    .leg-title{font-size:11px;font-weight:700;margin-bottom:2px}
+    .leg-range{font-size:10px;color:#6B8FAE;font-family:'JetBrains Mono',monospace}
+    .leg-acao{font-size:10px;color:#6B8FAE;margin-top:2px}
+
+    /* Painel direito */
+    #card-atual{background:#0D2137;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:10px;border:1px solid}
+    #icone-atual{width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;flex-shrink:0}
+    #label-atual{font-size:10px;color:#6B8FAE;font-family:'JetBrains Mono',monospace;margin-bottom:2px}
+    #valor-atual{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace}
+    #risco-atual{margin-left:auto;font-size:12px;font-weight:700}
+
+    /* Gauge */
+    #wrap-gauge{background:#0D2137;border:1px solid #1A3A5C;border-radius:12px;padding:16px 14px 12px}
+    #gauge-label{font-size:10px;color:#6B8FAE;font-family:'JetBrains Mono',monospace;letter-spacing:.12em;text-align:center;margin-bottom:10px}
+    #gauge-canvas{display:block;margin:0 auto}
+    #gauge-result{margin-top:10px;border-radius:8px;padding:10px 12px;text-align:center;display:none}
+    #gauge-risco-label{font-size:13px;font-weight:700;margin-bottom:4px}
+    #gauge-desc{font-size:11px;color:#6B8FAE;line-height:1.5}
+
+    /* Spinner */
+    #spinner{height:160px;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+    #spin-circle{width:34px;height:34px;border-radius:50%;border:3px solid #1A3A5C;border-top:3px solid #00D4FF;animation:spin .9s linear infinite}
+    #spin-txt{font-size:11px;color:#6B8FAE;font-family:'JetBrains Mono',monospace}
+    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+    /* Botão predição */
+    #btn-pred{width:100%;padding:13px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:.05em;transition:all .2s;background:linear-gradient(135deg,#00D4FFCC,#007A9AEE);color:#050F1A}
+    #btn-pred:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-2px);box-shadow:0 8px 24px #00D4FF33}
+    #btn-pred:disabled{background:#1A3A5C;color:#6B8FAE;cursor:not-allowed;transform:none}
+
+    /* Detalhes técnicos */
+    #tech{background:#0D2137;border:1px solid #1A3A5C;border-radius:10px;padding:12px 14px;display:none}
+    #tech-title{font-size:10px;color:#6B8FAE;font-family:'JetBrains Mono',monospace;letter-spacing:.1em;margin-bottom:10px}
+    .tech-row{display:flex;justify-content:space-between;padding-bottom:6px;margin-bottom:6px;border-bottom:1px solid #1A3A5C44;font-size:11px}
+    .tech-key{color:#6B8FAE}
+    .tech-val{font-family:'JetBrains Mono',monospace;font-weight:600;color:#E8F4FD}
+
+    /* Footer */
+    #footer{background:#0D2137;border:1px solid #1A3A5C;border-radius:8px;padding:10px 12px;font-size:10px;color:#6B8FAE;line-height:1.7;font-family:'JetBrains Mono',monospace;margin-top:auto}
+    #footer-title{color:#00D4FF;font-size:9px;letter-spacing:.1em;margin-bottom:4px}
+
+    @media(max-width:700px){
+      #main{grid-template-columns:1fr}
+      #left{border-right:none;border-bottom:1px solid #1A3A5C}
+    }
+
+    @keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+    .fade{animation:fadeIn .35s ease-out}
+    @keyframes pulse{0%{transform:scale(1)}40%{transform:scale(1.03)}100%{transform:scale(1)}}
+    .pulse{animation:pulse .5s ease-out}
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="header">
+  <div id="logo">⬡</div>
+  <div>
+    <div id="logo-text">GlicemIA</div>
+    <div id="logo-sub">Sistema de Predição Glicêmica com LSTM · UNIFEG 2026</div>
+  </div>
+  <div id="status">
+    <div id="dot"></div>
+    <span id="status-text">SISTEMA ONLINE</span>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+
+  <!-- Painel Esquerdo -->
+  <div id="left">
+    <div class="label-sec">CENÁRIO DE SIMULAÇÃO</div>
+    <div id="cenarios">
+      <button class="btn-cen" data-tipo="hipo"   onclick="trocarCenario(this)">Hipoglicemia</button>
+      <button class="btn-cen ativo" data-tipo="normal" onclick="trocarCenario(this)">Normal</button>
+      <button class="btn-cen" data-tipo="alerta" onclick="trocarCenario(this)">Alerta</button>
+      <button class="btn-cen" data-tipo="hiper"  onclick="trocarCenario(this)">Hiperglicemia</button>
+    </div>
+
+    <div id="wrap-chart">
+      <div id="chart-header">
+        <span>HISTÓRICO CGM — 5h de leituras</span>
+        <span id="leitura-agora" style="color:#00D4FF">— mg/dL agora</span>
+      </div>
+      <canvas id="cgm-canvas" height="200"></canvas>
+    </div>
+
+    <div id="legenda">
+      <div class="leg-card" style="border-color:#FF4757">
+        <div class="leg-title" style="color:#FF4757">Hipoglicemia</div>
+        <div class="leg-range">&lt; 70 mg/dL</div>
+        <div class="leg-acao">Ingestão imediata de carboidratos</div>
+      </div>
+      <div class="leg-card" style="border-color:#FFA502">
+        <div class="leg-title" style="color:#FFA502">Alerta</div>
+        <div class="leg-range">70–90 mg/dL</div>
+        <div class="leg-acao">Monitoramento intensivo</div>
+      </div>
+      <div class="leg-card" style="border-color:#2ED573">
+        <div class="leg-title" style="color:#2ED573">Normal</div>
+        <div class="leg-range">90–180 mg/dL</div>
+        <div class="leg-acao">Continuar rotina normal</div>
+      </div>
+      <div class="leg-card" style="border-color:#FFD700">
+        <div class="leg-title" style="color:#FFD700">Hiperglicemia</div>
+        <div class="leg-range">&gt; 180 mg/dL</div>
+        <div class="leg-acao">Avaliar com profissional</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Painel Direito -->
+  <div id="right">
+
+    <!-- Leitura atual -->
+    <div id="card-atual" style="border-color:#2ED57344">
+      <div id="icone-atual" style="background:#2ED57322;color:#2ED573">✓</div>
+      <div>
+        <div id="label-atual">LEITURA ATUAL</div>
+        <div id="valor-atual" style="color:#2ED573">— <span style="font-size:11px;font-weight:400;color:#6B8FAE">mg/dL</span></div>
+      </div>
+      <div id="risco-atual" style="color:#2ED573">NORMAL</div>
+    </div>
+
+    <!-- Gauge -->
+    <div id="wrap-gauge">
+      <div id="gauge-label">PREDIÇÃO +30 MINUTOS</div>
+      <canvas id="gauge-canvas" width="300" height="170"></canvas>
+      <div id="spinner">
+        <div id="spin-circle"></div>
+        <span id="spin-txt">Processando LSTM...</span>
+      </div>
+      <div id="gauge-result">
+        <div id="gauge-risco-label"></div>
+        <div id="gauge-desc"></div>
+      </div>
+    </div>
+
+    <!-- Botão -->
+    <button id="btn-pred" onclick="executarPredicao()">PREVER GLICEMIA EM 30 MIN</button>
+
+    <!-- Detalhes técnicos -->
+    <div id="tech">
+      <div id="tech-title">DETALHES TÉCNICOS</div>
+      <div class="tech-row"><span class="tech-key">Modelo</span><span class="tech-val">LSTM 64 → 32 units</span></div>
+      <div class="tech-row"><span class="tech-key">Janela entrada</span><span class="tech-val">60 leituras (5h)</span></div>
+      <div class="tech-row"><span class="tech-key">Horizonte</span><span class="tech-val">60 passos (+30 min)</span></div>
+      <div class="tech-row"><span class="tech-key">Valor previsto</span><span id="tech-val-pred" class="tech-val">—</span></div>
+      <div class="tech-row" style="border:none;margin:0;padding:0"><span class="tech-key">Classificação</span><span id="tech-val-cls" class="tech-val">—</span></div>
+    </div>
+
+    <!-- Footer -->
+    <div id="footer">
+      <div id="footer-title">STACK TÉCNICA</div>
+      Python · FastAPI · TensorFlow / Keras<br>
+      Dataset: Shanghai T1DM &amp; T2DM<br>
+      Arquitetura: LSTM(64) → LSTM(32) → Dense(1)
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Paleta ────────────────────────────────────────────────────────────
+const C = {
+  bg:'#050F1A', panel:'#0D2137', border:'#1A3A5C',
+  cyan:'#00D4FF', red:'#FF4757', orange:'#FFA502',
+  green:'#2ED573', yellow:'#FFD700', textSec:'#6B8FAE'
+};
+
+// ── Estado ────────────────────────────────────────────────────────────
+let leituras = [];
+let animGauge = null;
+let gaugeCurrent = 0;
+
+// ── Classificação clínica ─────────────────────────────────────────────
+function classificar(v) {
+  if (v < 70)  return {label:'HIPOGLICEMIA', cor:C.red,    icone:'▼', desc:'Glicemia criticamente baixa — ação imediata necessária'};
+  if (v < 90)  return {label:'ALERTA',       cor:C.orange, icone:'!', desc:'Zona de alerta — monitore de perto nos próximos 30 min'};
+  if (v <= 180)return {label:'NORMAL',       cor:C.green,  icone:'✓', desc:'Glicemia prevista dentro da faixa saudável'};
+  return              {label:'HIPERGLICEMIA', cor:C.yellow, icone:'▲', desc:'Glicemia elevada — avalie com profissional de saúde'};
+}
+
+// ── Predição (simula LSTM) ────────────────────────────────────────────
+function prever(arr) {
+  const rec = arr.slice(-20);
+  const pesos = rec.map((_,i) => i+1);
+  const soma  = pesos.reduce((a,b)=>a+b,0);
+  let tend = 0;
+  for (let i=1;i<rec.length;i++) tend += ((rec[i]-rec[i-1])*pesos[i])/soma;
+  const proj = arr[arr.length-1] + tend*6;
+  const media= arr.slice(-30).reduce((a,b)=>a+b,0)/30;
+  return Math.max(40, Math.min(400, Math.round((proj*0.75+media*0.25)*10)/10));
+}
+
+// ── Gerador de cenários ───────────────────────────────────────────────
+function gerar(tipo) {
+  const r=(v,n=3)=>Math.max(40,Math.min(400,v+(Math.random()-.5)*n*2));
+  const d=[];
+  for(let i=0;i<60;i++){
+    if(tipo==='hipo')   d.push(r(160-i*1.6,3));
+    else if(tipo==='hiper')  d.push(r(80+i*1.9,4));
+    else if(tipo==='alerta') d.push(r(120-i*.55,3));
+    else d.push(r(130-30*Math.sin((i/60)*Math.PI)+10*Math.sin(i/5),4));
+  }
+  return d;
+}
+
+// ── Desenha gráfico CGM em Canvas ────────────────────────────────────
+function desenharGrafico() {
+  const canvas = document.getElementById('cgm-canvas');
+  const wrap   = document.getElementById('wrap-chart');
+  canvas.width = wrap.clientWidth - 16;
+  const ctx = canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const PAD={top:8,right:12,bottom:24,left:38};
+  const w=W-PAD.left-PAD.right, h=H-PAD.top-PAD.bottom;
+
+  ctx.clearRect(0,0,W,H);
+
+  const min=40, max=350;
+  const xOf=(i)=>PAD.left + (i/(leituras.length-1))*w;
+  const yOf=(v)=>PAD.top + h - ((v-min)/(max-min))*h;
+
+  // Zona hipoglicemia
+  ctx.fillStyle='#FF475714';
+  ctx.fillRect(PAD.left,yOf(70),w,yOf(min)-yOf(70));
+
+  // Zona alerta
+  ctx.fillStyle='#FFA50214';
+  ctx.fillRect(PAD.left,yOf(90),w,yOf(70)-yOf(90));
+
+  // Linhas de referência
+  [[70,C.red],[90,C.orange],[180,C.yellow]].forEach(([val,cor])=>{
+    const y=yOf(val);
+    ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(PAD.left+w,y);
+    ctx.strokeStyle=cor+'88'; ctx.lineWidth=1; ctx.setLineDash([4,3]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=cor; ctx.font='9px JetBrains Mono,monospace'; ctx.textAlign='right';
+    ctx.fillText(val,PAD.left-4,y+3);
+  });
+
+  // Grid Y
+  [100,140,180,220,280].forEach(val=>{
+    if(val===180)return;
+    const y=yOf(val);
+    ctx.beginPath(); ctx.moveTo(PAD.left,y); ctx.lineTo(PAD.left+w,y);
+    ctx.strokeStyle='#1A3A5C55'; ctx.lineWidth=.5; ctx.stroke();
+    ctx.fillStyle=C.textSec; ctx.font='9px JetBrains Mono,monospace'; ctx.textAlign='right';
+    ctx.fillText(val,PAD.left-4,y+3);
+  });
+
+  // Labels X
+  const xLabels=[[0,'−5h'],[15,'−3h45'],[30,'−2h30'],[45,'−1h15'],[59,'Agora']];
+  ctx.fillStyle=C.textSec; ctx.font='9px JetBrains Mono,monospace'; ctx.textAlign='center';
+  xLabels.forEach(([i,l])=>ctx.fillText(l,xOf(i),H-6));
+
+  // Área sob a curva
+  ctx.beginPath();
+  ctx.moveTo(xOf(0),yOf(leituras[0]));
+  leituras.forEach((v,i)=>ctx.lineTo(xOf(i),yOf(v)));
+  ctx.lineTo(xOf(leituras.length-1),H);
+  ctx.lineTo(xOf(0),H);
+  ctx.closePath();
+  const grad=ctx.createLinearGradient(0,PAD.top,0,H);
+  grad.addColorStop(0,'#00D4FF33'); grad.addColorStop(1,'#00D4FF00');
+  ctx.fillStyle=grad; ctx.fill();
+
+  // Linha principal
+  ctx.beginPath();
+  ctx.moveTo(xOf(0),yOf(leituras[0]));
+  leituras.forEach((v,i)=>ctx.lineTo(xOf(i),yOf(v)));
+  ctx.strokeStyle=C.cyan; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.stroke();
+
+  // Ponto final
+  const lastX=xOf(leituras.length-1), lastY=yOf(leituras[leituras.length-1]);
+  const rAtual=classificar(leituras[leituras.length-1]);
+  ctx.beginPath(); ctx.arc(lastX,lastY,5,0,Math.PI*2);
+  ctx.fillStyle=rAtual.cor; ctx.shadowColor=rAtual.cor; ctx.shadowBlur=10;
+  ctx.fill(); ctx.shadowBlur=0;
+}
+
+// ── Gauge semicircular em Canvas ──────────────────────────────────────
+function desenharGauge(valor, risco) {
+  const canvas=document.getElementById('gauge-canvas');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const cx=W/2, cy=H-16, r=Math.min(W,H)*.78;
+
+  const toAng=(v)=>-180+Math.min(1,Math.max(0,(v-40)/360))*180;
+  const toRad=(deg)=>deg*(Math.PI/180);
+
+  ctx.clearRect(0,0,W,H);
+
+  // Trilho fundo
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,0,false);
+  ctx.lineWidth=20; ctx.strokeStyle='#0A1929'; ctx.stroke();
+
+  // Zonas coloridas
+  [[40,70,C.red],[70,90,C.orange],[90,180,C.green],[180,400,C.yellow]].forEach(([mn,mx,cor])=>{
+    const a1=Math.PI+toRad(toAng(mn)+180), a2=Math.PI+toRad(toAng(mx)+180);
+    ctx.beginPath(); ctx.arc(cx,cy,r,a1,a2,false);
+    ctx.lineWidth=16; ctx.strokeStyle=cor+'44'; ctx.stroke();
+  });
+
+  // Arco preenchido
+  const angAtual=Math.PI+toRad(toAng(valor)+180);
+  const g=ctx.createLinearGradient(cx-r,cy,cx+r,cy);
+  g.addColorStop(0,C.red); g.addColorStop(.19,C.orange);
+  g.addColorStop(.55,C.green); g.addColorStop(1,C.yellow);
+  ctx.beginPath(); ctx.arc(cx,cy,r,Math.PI,angAtual,false);
+  ctx.lineWidth=16; ctx.strokeStyle=g; ctx.lineCap='round'; ctx.stroke();
+
+  // Marcações
+  [70,90,180].forEach(mark=>{
+    const ang=Math.PI+toRad(toAng(mark)+180);
+    ctx.beginPath();
+    ctx.moveTo(cx+(r-12)*Math.cos(ang),cy+(r-12)*Math.sin(ang));
+    ctx.lineTo(cx+(r+8)*Math.cos(ang), cy+(r+8)*Math.sin(ang));
+    ctx.strokeStyle='#1A3A5C'; ctx.lineWidth=2; ctx.setLineDash([]); ctx.stroke();
+    ctx.fillStyle=C.textSec; ctx.font='bold 9px JetBrains Mono,monospace';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(mark,cx+(r+24)*Math.cos(ang),cy+(r+24)*Math.sin(ang));
+  });
+
+  // Agulha
+  const nAng=Math.PI+toRad(toAng(valor)+180);
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+(r-6)*Math.cos(nAng),cy+(r-6)*Math.sin(nAng));
+  ctx.strokeStyle=risco.cor; ctx.lineWidth=3; ctx.lineCap='round';
+  ctx.shadowColor=risco.cor; ctx.shadowBlur=14; ctx.stroke(); ctx.shadowBlur=0;
+
+  // Hub
+  ctx.beginPath(); ctx.arc(cx,cy,7,0,Math.PI*2);
+  ctx.fillStyle=risco.cor; ctx.shadowColor=risco.cor; ctx.shadowBlur=16;
+  ctx.fill(); ctx.shadowBlur=0;
+
+  // Valor central
+  ctx.fillStyle=risco.cor; ctx.font='bold 24px JetBrains Mono,monospace';
+  ctx.textAlign='center'; ctx.textBaseline='bottom';
+  ctx.fillText(Math.round(valor),cx,cy-r*.28);
+  ctx.fillStyle=C.textSec; ctx.font='10px Inter,sans-serif';
+  ctx.textBaseline='top'; ctx.fillText('mg/dL',cx,cy-r*.22+4);
+
+  // Min/max
+  ctx.fillStyle=C.textSec; ctx.font='9px JetBrains Mono,monospace';
+  ctx.textBaseline='middle';
+  ctx.textAlign='left';  ctx.fillText('40',  cx-r-8,cy+12);
+  ctx.textAlign='right'; ctx.fillText('400',cx+r+8,cy+12);
+}
+
+// ── Anima o gauge suavemente ──────────────────────────────────────────
+function animarGauge(target, risco) {
+  if(animGauge) cancelAnimationFrame(animGauge);
+  function step(){
+    const diff=target-gaugeCurrent;
+    if(Math.abs(diff)<.4){ gaugeCurrent=target; desenharGauge(target,risco); return; }
+    gaugeCurrent+=diff*.09;
+    desenharGauge(gaugeCurrent,risco);
+    animGauge=requestAnimationFrame(step);
+  }
+  step();
+}
+
+// ── Atualiza painel direito ───────────────────────────────────────────
+function atualizarPainelAtual() {
+  const v=leituras[leituras.length-1];
+  const r=classificar(v);
+  document.getElementById('card-atual').style.borderColor=r.cor+'44';
+  document.getElementById('icone-atual').textContent=r.icone;
+  document.getElementById('icone-atual').style.background=r.cor+'22';
+  document.getElementById('icone-atual').style.color=r.cor;
+  document.getElementById('valor-atual').innerHTML=`${v.toFixed(1)} <span style="font-size:11px;font-weight:400;color:#6B8FAE">mg/dL</span>`;
+  document.getElementById('valor-atual').style.color=r.cor;
+  document.getElementById('risco-atual').textContent=r.label;
+  document.getElementById('risco-atual').style.color=r.cor;
+  document.getElementById('leitura-agora').textContent=`${v.toFixed(0)} mg/dL agora`;
+  document.getElementById('leitura-agora').style.color=r.cor;
+}
+
+// ── Trocar cenário ────────────────────────────────────────────────────
+function trocarCenario(btn) {
+  document.querySelectorAll('.btn-cen').forEach(b=>{
+    b.classList.remove('ativo');
+    b.style.background='#0D2137'; b.style.color='#6B8FAE'; b.style.borderColor='#1A3A5C';
+  });
+  const tipo=btn.dataset.tipo;
+  const cor = tipo==='hipo'?C.red:tipo==='alerta'?C.orange:tipo==='hiper'?C.yellow:C.green;
+  btn.classList.add('ativo');
+  btn.style.background=cor+'22'; btn.style.color=cor; btn.style.borderColor=cor+'88';
+
+  leituras=gerar(tipo);
+  desenharGrafico();
+  atualizarPainelAtual();
+
+  // Reseta gauge
+  document.getElementById('gauge-result').style.display='none';
+  document.getElementById('tech').style.display='none';
+  gaugeCurrent=0;
+  desenharGauge(120,classificar(120));
+
+  setTimeout(executarPredicao,400);
+}
+
+// ── Executar predição ─────────────────────────────────────────────────
+function executarPredicao() {
+  const btn=document.getElementById('btn-pred');
+  const spinner=document.getElementById('spinner');
+  const gaugeCanvas=document.getElementById('gauge-canvas');
+  const result=document.getElementById('gauge-result');
+
+  btn.disabled=true; btn.textContent='⟳  Calculando...';
+  spinner.style.display='flex'; gaugeCanvas.style.display='none';
+  result.style.display='none';
+  document.getElementById('tech').style.display='none';
+
+  setTimeout(()=>{
+    const val=prever(leituras);
+    const r=classificar(val);
+
+    spinner.style.display='none'; gaugeCanvas.style.display='block';
+    animarGauge(val,r);
+
+    result.style.display='block';
+    result.style.background=r.cor+'11';
+    result.style.border=`1px solid ${r.cor}44`;
+    result.className='fade';
+    document.getElementById('gauge-risco-label').textContent=`${r.icone}  ${r.label}`;
+    document.getElementById('gauge-risco-label').style.color=r.cor;
+    document.getElementById('gauge-desc').textContent=r.desc;
+
+    document.getElementById('tech-val-pred').textContent=`${val} mg/dL`;
+    document.getElementById('tech-val-pred').style.color=r.cor;
+    document.getElementById('tech-val-cls').textContent=r.label;
+    document.getElementById('tech-val-cls').style.color=r.cor;
+    document.getElementById('tech').style.display='block';
+    document.getElementById('tech').className='fade';
+
+    btn.disabled=false; btn.textContent='PREVER GLICEMIA EM 30 MIN';
+    document.getElementById('wrap-gauge').classList.add('pulse');
+    setTimeout(()=>document.getElementById('wrap-gauge').classList.remove('pulse'),600);
+  },900);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  // Ativa botão Normal
+  const btnNormal=document.querySelector('[data-tipo="normal"]');
+  btnNormal.style.background=C.green+'22';
+  btnNormal.style.color=C.green;
+  btnNormal.style.borderColor=C.green+'88';
+
+  leituras=gerar('normal');
+  desenharGrafico();
+  atualizarPainelAtual();
+  desenharGauge(120,classificar(120));
+  setTimeout(executarPredicao,600);
+});
+
+window.addEventListener('resize',()=>{
+  desenharGrafico();
+});
+</script>
+</body>
+</html>
